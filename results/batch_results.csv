@@ -1,0 +1,3 @@
+games,x_simulation,o_simulation,x_c,o_c,O_wins,X_wins,draws,runtime_seconds,board,result
+100,500,600,2.3,2.3,0,52,48,33.02476525306702,"[['X', 'O', 'X'], ['O', 'X', 'X'], ['O', 'X', 'O']]",draw
+90,460,600,2.6,2.8,0,43,47,28.858937740325928,"[['X', 'X', 'O'], ['O', 'X', 'X'], ['O', 'X', 'O']]",X (mcts) won

@@ -1,0 +1,1095 @@
+import random
+import copy
+import math
+import time
+import csv
+import os
+import argparse
+import sys
+import yaml
+import subprocess
+
+
+parser = argparse.ArgumentParser()
+
+
+parser.add_argument("--games", type=int)
+
+
+parser.add_argument(
+    "--x_type",
+    choices=["random", "mcts"]
+)
+
+
+parser.add_argument("--xsimulations", type=int)
+
+parser.add_argument("--xc", type=float)
+
+
+parser.add_argument(
+    "--o_type",
+    choices=["random", "mcts"]
+)
+
+
+parser.add_argument("--osimulations", type=int)
+
+parser.add_argument("--oc", type=float)
+
+
+parser.add_argument("--output", type=str)
+
+
+
+def checkVariable(board:list[list[str]]):
+
+    if not isinstance(board, list):
+
+        raise TypeError("Board must be a list.")
+
+
+    if len(board) != 3:
+
+        raise ValueError("Board must contain exactly 3 rows.")
+
+
+    valid_symbols = {"X", "O", "-"}
+
+
+    for row in board:
+
+        if not isinstance(row, list):
+
+            raise TypeError("Each row must be a list.")
+
+
+        if len(row) != 3:
+
+            raise ValueError("Each row must contain exactly 3 elements.")
+
+
+        for item in row:
+
+            if not isinstance(item, str):
+
+                raise TypeError("Every board element must be a string.")
+
+
+            if item not in valid_symbols:
+
+                raise ValueError('Board elements must be "X", "O", or "-".')
+
+
+
+def TicTacToeboard(board: list[list[str]]):
+
+    checkVariable(board)
+
+    for i in range(len(board)):
+
+        for j in range(len(board[i])):
+
+            print(board[i][j], end = " ")
+
+        print()
+
+
+
+def isEmpty(board: list[list[str]]):
+
+    empty_positions = []
+
+    checkVariable(board)
+
+
+    for i in range(len(board)):
+
+        for j in range(len(board[i])):
+
+            if board[i][j] == "-":
+
+                position = (i, j)
+
+                empty_positions.append(position)
+
+    return empty_positions
+
+
+
+def placeElement(board: list[list[str]], player):
+
+    checkVariable(board)
+
+    legal_moves = isEmpty(board)
+
+    if not legal_moves:
+
+        raise ValueError("Cannot place an element because the board is full.")
+
+    random_position = random.randint(0, len(legal_moves)-1)
+
+    row, column = legal_moves[random_position]
+
+    return row, column
+
+
+
+def checkTie(board: list[list[str]]):
+
+    checkVariable(board)
+
+    if ((board[0][0] != '-'
+            and board[0][1] != '-' and board[0][2] != '-' and board[1][0] != '-'
+            and board[1][1] != '-' and board[1][2] != '-' and board[2][0] != '-'
+            and board[2][1] != '-' and board[2][2] != '-' )):
+
+        return True
+
+    return False
+
+
+
+def turn(board: list[list[str]]):
+
+    checkVariable(board)
+
+    count = 0
+
+    for i in range(len(board)):
+
+        for j in range(len(board[i])):
+
+            if board[i][j] != "-":
+
+                count += 1
+
+    if count %2 == 0:
+
+        return "X"
+
+    return "O"
+
+
+
+def checkWin(board: list[list[str]], player):
+
+    ##check rows
+
+    checkVariable(board)
+
+    if (board[0][0] == player and board[0][1] == player and board[0][2] == player):
+
+        return True
+
+    if (board[1][0] == player and board[1][1] == player and board[1][2] == player):
+
+        return True
+
+    if (board[2][0] == player and board[2][1] == player and board[2][2] == player):
+
+        return True
+
+    if (board[0][0] == player and board[1][0] == player and board[2][0] == player):
+
+        return True
+
+    if (board[0][1] == player and board[1][1] == player and board[2][1] == player):
+
+        return True
+
+    if (board[0][2] == player and board[1][2] == player and board[2][2] == player):
+
+        return True
+
+    if (board[0][0] == player and board[1][1] == player and board[2][2] == player):
+
+        return True
+
+    if (board[0][2] == player and board[1][1] == player and board[2][0] == player):
+
+        return True
+
+    return False
+
+
+
+board = [["-", "-", "-"],
+         ["-", "-", "-"],
+         ["-", "-", "-"]]
+
+tie_count = 0
+
+x_count = 0
+
+y_count = 0
+
+
+
+class Node:
+
+    def __init__(self, board):
+
+        self.board = board
+
+        self.children = []
+
+        self.parent = None
+
+        self.move = None
+
+        self.visits = 0
+
+        self.score = 0
+
+        self.empty_positions = isEmpty(self.board)
+
+
+    def createNewNodes(self):
+
+        copyboard = copy.deepcopy(self.board)
+
+        child_node = Node(copyboard)
+
+        child_node.parent = self
+
+        turns = turn(self.board)
+
+        random_position = random.randint(0, len(self.empty_positions)-1)
+
+        row,column = self.empty_positions[random_position]
+
+        child_node.move = (row,column)
+
+        child_node.board = copyboard
+
+        child_node.board[row][column] = turns
+
+        self.empty_positions.remove((row,column))
+
+        child_node.empty_positions = isEmpty(copyboard)
+
+        self.children.append(child_node)
+
+
+        return child_node
+
+
+    def simulation(self, player):
+
+        copyboard = copy.deepcopy(self.board)
+
+        while True:
+
+            if (checkWin(copyboard, "X") or checkWin(copyboard, "O")):
+
+                break
+
+            elif (checkTie(copyboard)):
+
+                break
+
+            current_turn = turn(copyboard)
+
+            row, column = placeElement(copyboard, current_turn)
+
+            copyboard[row][column] = current_turn
+
+
+        if checkWin(copyboard, player):
+
+            return 1
+
+        elif checkTie(copyboard):
+
+            return 0
+
+        else:
+
+            return -1
+
+
+
+    def backprop(self, result):
+
+        self.visits += 1
+
+        self.score += result
+
+        if self.parent != None:
+
+            self.parent.backprop(result)
+
+        return self
+
+
+    def ucb1(self, c, mcts_player):
+
+        if self.parent == None:
+
+            return "This is the root"
+
+        if self.visits == 0:
+
+            return float("inf")
+
+        part1 = self.score / self.visits
+
+        thing = (math.log(self.parent.visits))
+
+        quotient = thing / self.visits
+
+        part2 = c * math.sqrt(quotient)
+
+        if turn(self.parent.board) == mcts_player:
+
+            return (part1 + part2)
+
+        return ((-1 * part1) + part2)
+
+
+    def returnBest(self, mcts_player, c):
+
+        if len(self.children) > 0:
+
+            results = max(
+                self.children,
+                key=lambda child: child.ucb1(c, mcts_player)
+            )
+
+        return results
+
+
+    def is_leaf(self):
+
+        return len(self.children) == 0
+
+
+    def terminal(self):
+
+        if checkWin(self.board, "X") or checkWin(self.board, "O") or checkTie(self.board):
+
+            return True
+
+        return False
+
+
+
+
+def MCTSsearch(board: list[list[str]], player, simulation_request, c):
+
+    checkVariable(board)
+
+    root = Node(board)
+
+    current = root
+
+    simulation_counter = 0
+
+    while simulation_counter < simulation_request:
+
+        if current.terminal():
+
+            result = current.simulation(player)
+
+            current.backprop(result)
+
+            simulation_counter += 1
+
+            current = root
+
+            continue
+
+
+        if current.is_leaf():
+
+            if current.visits == 0:
+
+                result = current.simulation(player)
+
+                current.backprop(result)
+
+                simulation_counter += 1
+
+            else:
+
+                if len(current.empty_positions) > 0:
+
+                    if not current.terminal():
+
+                        current = current.createNewNodes()
+
+                        result_child = current.simulation(player)
+
+                        current.backprop(result_child)
+
+                        simulation_counter += 1
+
+                        current = root
+
+
+        else:
+
+            if len(current.empty_positions) > 0:
+
+                if not current.terminal():
+
+                    current = current.createNewNodes()
+
+                    result_child = current.simulation(player)
+
+                    current.backprop(result_child)
+
+                    simulation_counter += 1
+
+                    current = root
+
+            else:
+
+                current = current.returnBest(player, c)
+
+
+    if len(root.children) == 0:
+
+        return None
+
+    results = max(root.children, key=lambda child: child.visits)
+
+    return results.move
+
+
+
+def run_experiment(games, o_simulation, x_simulation, o_c, x_c, x_type, o_type):
+
+    O_wins = 0
+
+    X_wins = 0
+
+    draws = 0
+
+    finished_games = []
+
+
+    start_time = time.time()
+
+    for game_number in range(games):
+
+        board = [
+            ["-", "-", "-"],
+            ["-", "-", "-"],
+            ["-", "-", "-"]
+        ]
+
+
+        while True:
+
+            current_player = turn(board)
+
+
+            if current_player == "X":
+
+                if x_type == "random":
+
+                    row, column = placeElement(board, current_player)
+
+                else:
+
+                    row, column = MCTSsearch(
+                        board,
+                        "X",
+                        x_simulation,
+                        x_c
+                    )
+
+            else:
+
+                if o_type == "random":
+
+                    row, column = placeElement(board, current_player)
+
+                else:
+
+                    row, column = MCTSsearch(
+                        board,
+                        "O",
+                        o_simulation,
+                        o_c
+                    )
+
+
+            board[row][column] = current_player
+
+
+            if checkWin(board, current_player):
+
+                if current_player == "X":
+
+                    X_wins += 1
+
+                    result = f"X ({x_type}) won"
+
+                else:
+
+                    O_wins += 1
+
+                    result = f"O ({o_type}) won"
+
+
+                finished_games.append({
+                    "game": game_number + 1,
+                    "result": result,
+                    "board": copy.deepcopy(board)
+                })
+
+
+                break
+
+
+            if checkTie(board):
+
+                draws += 1
+
+
+                finished_games.append({
+                    "game": game_number + 1,
+                    "result": "draw",
+                    "board": copy.deepcopy(board)
+                })
+
+
+                break
+
+
+    end_time = time.time()
+
+
+    return {
+        "games": games,
+        "x_simulation": x_simulation,
+        "o_simulation": o_simulation,
+        "x_c": x_c,
+        "o_c": o_c,
+        "O_wins": O_wins,
+        "X_wins": X_wins,
+        "draws": draws,
+        "runtime_seconds": end_time - start_time,
+        "board": finished_games[0]["board"],
+        "result": finished_games[0]["result"]
+    }
+
+
+
+def save_experiment_summary(result, filename="results/results.csv"):
+
+    fieldnames = [
+        "games",
+        "x_simulation",
+        "o_simulation",
+        "x_c",
+        "o_c",
+        "O_wins",
+        "X_wins",
+        "draws",
+        "runtime_seconds",
+        "board",
+        "result"
+    ]
+
+
+    file_exists = os.path.exists(filename)
+
+
+    with open(filename, "a", newline="") as file:
+
+        writer = csv.DictWriter(file, fieldnames=fieldnames)
+
+
+        if not file_exists:
+
+            writer.writeheader()
+
+
+        writer.writerow({
+            key: result[key]
+            for key in fieldnames
+        })
+
+
+
+def get_bot_type(name):
+
+    while True:
+
+        print(f"\n{name} bot:")
+
+        print("1. MCTS")
+
+        print("2. Random")
+
+
+        choice = input("Choose: ").strip()
+
+
+        if choice == "1":
+
+            return "mcts"
+
+        elif choice == "2":
+
+            return "random"
+
+        else:
+
+            print("Please enter 1 or 2.")
+
+
+
+def get_positive_int(prompt, default=None):
+
+    while True:
+
+        value = input(prompt).strip()
+
+
+        if value == "" and default is not None:
+
+            return default
+
+
+        try:
+
+            value = int(value)
+
+            if value > 0:
+
+                return value
+
+        except ValueError:
+
+            pass
+
+
+        print("Enter a positive integer.")
+
+
+
+def get_float(prompt, default=None):
+
+    while True:
+
+        value = input(prompt).strip()
+
+
+        if value == "" and default is not None:
+
+            return default
+
+
+        try:
+
+            return float(value)
+
+        except ValueError:
+
+            print("Enter a number.")
+
+
+
+def get_amount_of_experiments():
+
+    print("\n==============================")
+
+    print("   MCTS Experiment Simulator")
+
+    print("==============================")
+
+
+    experiments = []
+
+
+    num_experiments = int(input("How many experiments do you want? "))
+
+
+    for i in range(num_experiments):
+
+        print(f"\nExperiment {i + 1}")
+
+
+        games = get_positive_int(
+            "\nNumber of games [100]: ",
+            default=100
+        )
+
+
+        x_type = get_bot_type("X")
+
+
+        if x_type == "mcts":
+
+            x_simulations = get_positive_int(
+                "X simulations [500]: ",
+                default=500
+            )
+
+            x_c = get_float(
+                "X exploration constant [1.4]: ",
+                default=1.4
+            )
+
+        else:
+
+            x_simulations = 0
+
+            x_c = 0.0
+
+
+        o_type = get_bot_type("O")
+
+
+        if o_type == "mcts":
+
+            o_simulations = get_positive_int(
+                "O simulations [500]: ",
+                default=500
+            )
+
+            o_c = get_float(
+                "O exploration constant [1.4]: ",
+                default=1.4
+            )
+
+        else:
+
+            o_simulations = 0
+
+            o_c = 0.0
+
+
+        print(f"\nExperiment {i + 1} configuration")
+
+        print("------------------------")
+
+        print(f"Games: {games}")
+
+
+        print(f"X bot: {x_type.upper()}")
+
+        if x_type == "mcts":
+
+            print(f"  simulations: {x_simulations}")
+
+            print(f"  c: {x_c}")
+
+
+        print(f"O bot: {o_type.upper()}")
+
+        if o_type == "mcts":
+
+            print(f"  simulations: {o_simulations}")
+
+            print(f"  c: {o_c}")
+
+
+        experiments.append({
+            "games": games,
+            "x_type": x_type,
+            "x_simulations": x_simulations,
+            "x_c": x_c,
+            "o_type": o_type,
+            "o_simulations": o_simulations,
+            "o_c": o_c
+        })
+
+
+    print("Experiments saved!")
+
+
+    return experiments
+
+
+
+def save_config_to_yaml(experiments, filename="compose.generated.yaml"):
+
+    services = {}
+
+
+    for i, experiment in enumerate(experiments, start=1):
+
+
+        service_name = f"experiment_{i}"
+
+
+        services[service_name] = {
+
+            "build": ".",
+
+            "image": "mcts-experiment:latest",
+
+            "pull_policy": "never",
+
+
+            "command": [
+
+                "--games", str(experiment["games"]),
+
+
+                "--x_type", experiment["x_type"],
+
+                "--xsimulations", str(experiment["x_simulations"]),
+
+                "--xc", str(experiment["x_c"]),
+
+
+                "--o_type", experiment["o_type"],
+
+                "--osimulations", str(experiment["o_simulations"]),
+
+                "--oc", str(experiment["o_c"]),
+
+
+                "--output", f"experiment_{i}.csv"
+            ],
+
+
+            "volumes": [
+
+                "./results:/app/results"
+            ]
+        }
+
+
+    compose = {
+
+        "services": services
+    }
+
+
+    with open(filename, "w") as file:
+
+        yaml.safe_dump(compose, file, sort_keys=False)
+
+
+
+def run_experiments(filename="compose.generated.yaml"):
+
+    subprocess.run(
+
+        [
+            "docker",
+            "compose",
+            "-f",
+            filename,
+            "up",
+            "--build"
+        ],
+
+        check=True
+    )
+
+
+
+# NEW:
+# combines experiment_1.csv, experiment_2.csv, ...
+# into one batch_results.csv
+
+def combine_experiment_csvs(experiments, output_file="results/batch_results.csv"):
+
+    rows = []
+
+
+    for i in range(1, len(experiments) + 1):
+
+        filename = f"results/experiment_{i}.csv"
+
+
+        if os.path.exists(filename):
+
+            with open(filename, "r", newline="") as file:
+
+                reader = csv.DictReader(file)
+
+
+                for row in reader:
+
+                    rows.append(row)
+
+
+    if len(rows) == 0:
+
+        print("No experiment results found.")
+
+        return False
+
+
+    with open(output_file, "w", newline="") as file:
+
+        writer = csv.DictWriter(
+            file,
+            fieldnames=rows[0].keys()
+        )
+
+
+        writer.writeheader()
+
+        writer.writerows(rows)
+
+
+    print(f"Combined results saved to {output_file}")
+
+
+    return True
+
+
+
+# NEW:
+# deletes experiment_1.csv, experiment_2.csv, etc.
+# AFTER they have been merged
+
+def delete_experiment_csvs(experiments):
+
+    for i in range(1, len(experiments) + 1):
+
+        filename = f"results/experiment_{i}.csv"
+
+
+        if os.path.exists(filename):
+
+            os.remove(filename)
+
+
+
+# CHANGED:
+# this now ONLY deletes the generated YAML.
+# It does not run docker compose again.
+
+def delete_compose_file(filename="compose.generated.yaml"):
+
+    if os.path.exists(filename):
+
+        os.remove(filename)
+
+
+
+if len(sys.argv) == 1:
+
+    # no command-line arguments
+
+    experiments = get_amount_of_experiments()
+
+
+    save_config_to_yaml(
+        experiments,
+        filename="compose.generated.yaml"
+    )
+
+
+    try:
+
+        run_experiments(
+            filename="compose.generated.yaml"
+        )
+
+
+        merge_success = combine_experiment_csvs(
+            experiments,
+            output_file="results/batch_results.csv"
+        )
+
+
+        if merge_success:
+
+
+            subprocess.run(
+
+                [
+                    "docker",
+                    "compose",
+                    "-f",
+                    "compose.generated.yaml",
+                    "down"
+                ],
+
+                check=False
+            )
+
+
+            delete_experiment_csvs(
+                experiments
+            )
+
+
+            delete_compose_file(
+                filename="compose.generated.yaml"
+            )
+
+
+            print("\nBatch finished.")
+
+            print(
+                "Results saved to results/batch_results.csv"
+            )
+
+
+    except subprocess.CalledProcessError:
+
+
+        print("\nDocker Compose failed.")
+
+
+        print(
+            "Temporary files were NOT deleted."
+        )
+
+
+        print(
+            "Kept: compose.generated.yaml"
+        )
+
+
+        print(
+            "\nYou can debug with:"
+        )
+
+
+        print(
+            "docker compose -f compose.generated.yaml config"
+        )
+
+
+        print(
+            "docker compose -f compose.generated.yaml up"
+        )
+
+
+
+else:
+
+    args = parser.parse_args()
+
+
+    result = run_experiment(
+
+        games = args.games,
+
+        x_type = args.x_type,
+
+        x_simulation = args.xsimulations,
+
+        x_c = args.xc,
+
+        o_type = args.o_type,
+
+        o_simulation = args.osimulations,
+
+        o_c = args.oc
+
+    )
+
+
+    save_experiment_summary(
+
+        result,
+
+        filename=f"results/{args.output}"
+
+    )
