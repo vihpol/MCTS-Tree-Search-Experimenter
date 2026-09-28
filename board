@@ -783,7 +783,7 @@ def get_amount_of_experiments():
 
         print(f"O bot: {o_type.upper()}")
 
-        if o_type == "mcts":
+        if o_type == "mcts": 
 
             print(f"  simulations: {o_simulations}")
 
