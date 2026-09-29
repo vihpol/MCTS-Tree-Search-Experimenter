@@ -36,8 +36,55 @@ At the end of a search, the move with the most visits is selected.
 ## Experiment Modes
 
 The experiment runner supports:
-
-```text
 MCTS vs MCTS
 MCTS vs Random
 Random vs MCTS
+
+## Instructions for Use
+
+### 1. Install Docker Desktop
+
+Download and install Docker Desktop:
+
+https://www.docker.com/products/docker-desktop/
+
+Make sure Docker Desktop is running before starting the program.
+
+You can verify Docker is running with:
+
+```bash
+docker info
+```
+
+### 2. Clone the repository
+```bash
+ git clone <your-repository-url>
+ cd <repository-folder>
+```
+
+### 3.  Create a Python virtual environment
+```bash
+python3 -m venv .venv
+```
+
+### .macOS / Linux
+```bash
+source .venv/bin/activate
+```
+
+### Windows
+```bash
+.venv\Scripts\activate
+```
+
+### 4. Install the Python dependencies
+```bash
+pip install -r requirements.txt
+```
+
+### 5. Run it on the terminal
+```bash
+python3 board
+```
+
+```text
